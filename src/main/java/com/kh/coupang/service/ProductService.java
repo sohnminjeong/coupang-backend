@@ -21,7 +21,7 @@ public class ProductService {
     public List<Product> viewCategory(int code){
         return dao.findByCateCode(code);
     }
-    
+
     public Product view(int code){
         return dao.findById(code).orElse(null);
     }
