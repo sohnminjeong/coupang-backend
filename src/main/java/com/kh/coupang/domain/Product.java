@@ -24,6 +24,8 @@ public class Product {
     @Column
     private int price;
 
+    @Column(name="prod_photo")
+    private String prodPhoto;  // prod_photo
 
     @ManyToOne  //1:다 관계 명시 _ 카테고리 1개에 여러 상품
     @JoinColumn(name="cate_code")    // foreign key 지정
