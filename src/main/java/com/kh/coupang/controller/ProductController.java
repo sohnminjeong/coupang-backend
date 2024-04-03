@@ -3,15 +3,23 @@ package com.kh.coupang.controller;
 import com.kh.coupang.domain.Category;
 import com.kh.coupang.domain.Product;
 import com.kh.coupang.domain.ProductDTO;
+import com.kh.coupang.domain.QProduct;
 import com.kh.coupang.service.ProductService;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.swing.*;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -31,13 +39,50 @@ public class ProductController {
     @Value("${spring.servlet.multipart.location}")
     private String uploadPath;  // D:\\upload
 
+    // jpa 방식
+    /*
     @GetMapping("/product")
-    public ResponseEntity<List<Product>> viewAll(@RequestParam(name="category", required = false) Integer category) {
-        log.info("category: " + category);
-        List<Product> list = service.viewAll();
+    public ResponseEntity<List<Product>> viewAll(@RequestParam(name="category", required = false) Integer category, @RequestParam(name="page", defaultValue = "1") int page) {
+        //log.info("category: " + category);
+        //log.info("page : " + page);
+        Sort sort = Sort.by("prodCode").descending();  // 거꾸로 정렬(큰->작은)
+        Pageable pageable = PageRequest.of(page-1, 10, sort);
+        // page의 default값이 1이기 때문에 0으로 시작해야해서 -1
+        Page<Product> list = service.viewAll(pageable);
         return category==null ?
-                ResponseEntity.status(HttpStatus.OK).body(list) :
-                ResponseEntity.status(HttpStatus.OK).body(service.viewCategory(category));
+                ResponseEntity.status(HttpStatus.OK).body(list.getContent()) :
+                ResponseEntity.status(HttpStatus.OK).body(service.viewCategory(category, pageable).getContent());
+    }
+    */
+    // querydsl 방식
+    @GetMapping("/product")
+    public ResponseEntity<List<Product>> viewAll(@RequestParam(name="category", required = false) Integer category, @RequestParam(name="page", defaultValue = "1") int page) {
+        //log.info("category: " + category);
+        //log.info("page : " + page);
+        Sort sort = Sort.by("prodCode").descending();  // 거꾸로 정렬(큰->작은)
+        Pageable pageable = PageRequest.of(page-1, 10, sort);
+
+        // QueryDSL
+        // 1. 가장 먼저 동적 처리하기 위한 Q도메인 클래스 얻어오기
+        // Q도메인 클래스를 이용하면 Entity 클래스에 선언된 필드들을 변수로 활용할 수 있음
+        QProduct qProduct = QProduct.product;
+
+        // 2. BooleanBuilder : where 문에 들어가는 조건들을 넣어주는 컨테이너
+        BooleanBuilder builder = new BooleanBuilder();
+
+        if(category!=null){
+            // 3. 원하는 조건은 필드값과 같이 결합해서 생성
+            BooleanExpression expression = qProduct.category.cateCode.eq(category);
+
+            // 4. 만들어진 조건은 where문에 and 나 or 같은 키워드와 결합
+            builder.and(expression);
+            // builder.or도 존재
+        }
+
+        // 5. BooleanBuilder는 QuerydslPredicateExcutor 인터페이스의 findAll() 사용(ProductDAO에 작성)
+        Page<Product> list = service.viewAll(pageable, builder);
+
+        return ResponseEntity.status(HttpStatus.OK).body(list.getContent());
     }
 
     @GetMapping("/product/{code}")

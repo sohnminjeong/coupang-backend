@@ -2,8 +2,12 @@ package com.kh.coupang.service;
 
 import com.kh.coupang.domain.Product;
 import com.kh.coupang.repo.ProductDAO;
+import com.querydsl.core.BooleanBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
 
 import java.util.List;
 
@@ -13,13 +17,13 @@ public class ProductService {
     @Autowired
     private ProductDAO dao;
 
-    public List<Product> viewAll(){
-        return dao.findAll();
-    }
+    public Page<Product> viewAll(Pageable pageable, BooleanBuilder builder){
+        return dao.findAll(builder, pageable);
+    } //순서 중요(builder가 먼저 와야 함)
 
     // 특정 카테고리의 모든 상품 조회
-    public List<Product> viewCategory(int code){
-        return dao.findByCateCode(code);
+    public Page<Product> viewCategory(int code, Pageable pageable){
+        return dao.findByCateCode(code, pageable);
     }
 
     public Product view(int code){

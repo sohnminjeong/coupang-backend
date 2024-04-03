@@ -1,12 +1,16 @@
 package com.kh.coupang.controller;
 
-import com.kh.coupang.domain.Review;
-import com.kh.coupang.domain.ReviewDTO;
-import com.kh.coupang.domain.ReviewImage;
+import com.kh.coupang.domain.*;
 import com.kh.coupang.service.ReviewService;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -74,8 +78,38 @@ public class ReviewController {
                 ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
 
+    // jpa방식 _ 정렬 : sort(id만 가능하고 다른건 불가_ex:product category)
+    /*
     @GetMapping("/review")
-    public ResponseEntity<List<Review>> viewAll(){
-        return ResponseEntity.status(HttpStatus.OK).body(service.viewAll());
+    public ResponseEntity<List<Review>> viewAll(@RequestParam(name="page", defaultValue = "1") int page){
+        // 정렬하고 싶으면 sort 사용
+        Sort sort = Sort.by("reviCode").descending();  // 거꾸로 정렬
+
+        Pageable pageable = PageRequest.of(page-1, 10, sort);
+        Page<Review> list = service.viewAll(pageable);
+
+        return ResponseEntity.status(HttpStatus.OK).body(list.getContent());
     }
+    */
+    // querydsl 방식 : prodCode에 따라 내림차순&1페이지에 10개씩 페이징 처리
+    @GetMapping("/review")
+    public ResponseEntity<List<Review>> viewAll(@RequestParam(name="prodCode", required = false) Integer prodCode, @RequestParam(name="page", defaultValue = "1") int page){
+        // 정렬하고 싶으면 sort 사용
+        Sort sort = Sort.by("reviCode").descending();  // 거꾸로 정렬
+        Pageable pageable = PageRequest.of(page-1, 10, sort);
+
+        QReview qReview = QReview.review;
+        BooleanBuilder builder = new BooleanBuilder();
+
+        if(prodCode!=null){
+            BooleanExpression expression = qReview.prodCode.eq(prodCode);
+
+            builder.and(expression);
+        }
+
+        Page<Review> list = service.viewAll(pageable, builder);
+
+        return ResponseEntity.status(HttpStatus.OK).body(list.getContent());
+    }
+
 }
