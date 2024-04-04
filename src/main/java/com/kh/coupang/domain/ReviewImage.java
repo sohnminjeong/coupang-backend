@@ -24,6 +24,7 @@ public class ReviewImage {
     @JoinColumn(name="revi_code")
     @JsonIgnore
     private Review reviCode;
+    
 
     @Column(name="revi_url")
     private String reviUrl;
