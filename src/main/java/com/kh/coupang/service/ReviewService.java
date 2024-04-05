@@ -34,4 +34,7 @@ public class ReviewService {
         return review.findAll(builder, pageable);
     }
 
+    // 리뷰 1개 조회
+    public Review view(int code) {return review.findById(code).orElse(null);}
+
 }

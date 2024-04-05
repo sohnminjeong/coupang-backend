@@ -1,6 +1,7 @@
 package com.kh.coupang.controller;
 
 import com.kh.coupang.domain.*;
+import com.kh.coupang.service.ReviewCommentService;
 import com.kh.coupang.service.ReviewService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -13,7 +14,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
+import org.springframework.stereotype.Repository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,6 +37,9 @@ public class ReviewController {
 
     @Autowired
     private ReviewService service;
+
+    @Autowired
+    private ReviewCommentService comment;
 
     @Value("${spring.servlet.multipart.location}")
     private String uploadPath;
@@ -112,4 +121,82 @@ public class ReviewController {
         return ResponseEntity.status(HttpStatus.OK).body(list.getContent());
     }
 
+    // 리뷰 1개 조회
+    @GetMapping("/review/{code}")
+    public ResponseEntity<Review> view(@PathVariable("code") int code){
+        Review vo = service.view(code);
+        return ResponseEntity.status(HttpStatus.OK).body(vo);
+    }
+
+    public Object authentication(){
+        SecurityContext securityContext = SecurityContextHolder.getContext();
+        Authentication authentication = securityContext.getAuthentication();
+        return authentication.getPrincipal();
+    }
+
+    // 리뷰 댓글 추가
+    @PostMapping("/review/comment")
+    public ResponseEntity createComment(@RequestBody ReviewComment vo){
+
+       // SecurityContext securityContext = SecurityContextHolder.getContext();
+       // Authentication authentication = securityContext.getAuthentication();
+       // Object principal = authentication.getPrincipal();
+        Object principal = authentication();
+
+        if(principal instanceof User){
+            User user = (User) principal;
+            vo.setUser(user);
+            return ResponseEntity.ok().body(comment.create(vo));
+        }
+        log.info("vo : " + vo);
+        return ResponseEntity.badRequest().build();
+    }
+
+    // 상품 1개에 따른 리뷰 조회 - (상하위 댓글 분류 전)
+//    @GetMapping("/review/{code}/comment")
+//    public ResponseEntity<List<ReviewComment>> viewComment(@PathVariable(name="code") int code){
+//        return ResponseEntity.ok(comment.findByReviewCode(code));
+//    }
+
+    @GetMapping("/public/review/{code}/comment")
+    public ResponseEntity<List<ReviewCommentDTO>> viewComment(@PathVariable(name="code") int code){
+        List<ReviewComment> topList = comment.getTopLevelCommenst(code);
+        List<ReviewCommentDTO> response = new ArrayList<>();
+
+        for(ReviewComment top : topList){
+
+            // 하위 댓글 처리 -> 반복 돌아야 함
+            List<ReviewComment> replies = comment.getRepliesComments(top.getReviComCode(), code);
+            List<ReviewCommentDTO> repliesDTO = new ArrayList<>();
+
+            for(ReviewComment reply : replies){
+                ReviewCommentDTO dto = ReviewCommentDTO.builder()
+                        .reviComCode(reply.getReviComCode())
+                        .reviCode(reply.getReviCode())
+                        .reviComDesc(reply.getReviComDesc())
+                        .reviComDate(reply.getReviComDate())
+                        .user(UserDTO.builder()
+                                .id(reply.getUser().getId())
+                                .name(reply.getUser().getName())
+                                .build())
+                        .build();
+                repliesDTO.add(dto);
+            }
+
+            // 상위 처리
+            ReviewCommentDTO dto = ReviewCommentDTO.builder()
+                    .reviCode(top.getReviCode())
+                    .reviComCode(top.getReviComCode())
+                    .reviComDesc(top.getReviComDesc())
+                    .reviComDate(top.getReviComDate())
+                    .user(UserDTO.builder()
+                            .id(top.getUser().getId())
+                            .name(top.getUser().getName())
+                            .build())
+                    .replies(repliesDTO)
+                    .build();
+            response.add(dto);
+        }
+        return ResponseEntity.ok(response);
+    }
 }

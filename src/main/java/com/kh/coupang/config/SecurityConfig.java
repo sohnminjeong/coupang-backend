@@ -52,7 +52,7 @@ public class SecurityConfig {
                     // 인증된 사람만 허용하는 것 막기(전체 허용 시킴)
                     .authorizeHttpRequests(authorize ->
                             authorize
-                                .requestMatchers("/signUp", "/login").permitAll()  // signUp은 허용
+                                .requestMatchers("/signUp", "/login", "/api/public/**").permitAll()  // signUp은 허용
                                     .requestMatchers("/api/product").hasRole("USER")
                                     .anyRequest().authenticated() // 인증된 애들만 허용시키겠음
                     )

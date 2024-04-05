@@ -1,9 +1,7 @@
 package com.kh.coupang.controller;
 
-import com.kh.coupang.domain.Category;
-import com.kh.coupang.domain.Product;
-import com.kh.coupang.domain.ProductDTO;
-import com.kh.coupang.domain.QProduct;
+import com.kh.coupang.domain.*;
+import com.kh.coupang.service.ProductCommentService;
 import com.kh.coupang.service.ProductService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -16,6 +14,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.swing.*;
@@ -24,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,6 +37,10 @@ public class ProductController {
     // 메서드명은 Service랑 동일!
     @Autowired
     private ProductService service;   // 보통 service를 많이 사용하게 되는 경우 service->product로 이름 변경
+
+    @Autowired
+    private ProductCommentService comment;
+
 
     @Value("${spring.servlet.multipart.location}")
     private String uploadPath;  // D:\\upload
@@ -83,12 +89,6 @@ public class ProductController {
         Page<Product> list = service.viewAll(pageable, builder);
 
         return ResponseEntity.status(HttpStatus.OK).body(list.getContent());
-    }
-
-    @GetMapping("/product/{code}")
-    public ResponseEntity<Product> view(@PathVariable("code") int code) {
-        Product vo = service.view(code);
-        return ResponseEntity.status(HttpStatus.OK).body(vo);
     }
 
     @PostMapping("/product")
@@ -219,4 +219,79 @@ public class ProductController {
                 ResponseEntity.status(HttpStatus.ACCEPTED).body(result)
                 : ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
+
+    // 상품 1개 조회
+    @GetMapping("/product/{code}")
+    public ResponseEntity<Product> view(@PathVariable("code") int code) {
+        Product vo = service.view(code);
+        return ResponseEntity.status(HttpStatus.OK).body(vo);
+    }
+
+    // 상품 댓글 추가
+    @PostMapping("/product/comment")
+    public ResponseEntity createComment(@RequestBody ProductComment vo){
+
+        // 시큐리티에 담은 로그인한 사용자의 정보 가져오기
+        SecurityContext securityContext = SecurityContextHolder.getContext();
+        Authentication authentication = securityContext.getAuthentication();
+        Object principal = authentication.getPrincipal();
+
+        if(principal instanceof User){
+            User user = (User) principal;
+            vo.setUser(user);
+            return ResponseEntity.ok().body(comment.create(vo));
+        }
+        log.info("vo : " + vo);
+        return ResponseEntity.badRequest().build();
+    }
+
+    // 상품 1개에 따른 댓글 조회(분류전)
+//    @GetMapping("/product/{code}/comment")
+//    public ResponseEntity<List<ProductComment>> viewComment(@PathVariable(name="code") int code){
+//        return ResponseEntity.ok(comment.findByProdCode(code));
+//    }
+
+    // 상품 1개에 따른 댓글 조회(상위&하위 분류후) -> 전체 다 보여줘야 하는 상황!
+    @GetMapping("/public/product/{code}/comment")
+    public ResponseEntity<List<ProductCommentDTO>> viewComment(@PathVariable(name="code") int code){
+        List<ProductComment> topList = comment.getTopLevelComments(code);
+        List<ProductCommentDTO> response = new ArrayList<>();
+
+        for(ProductComment top : topList){
+            // 하위 댓글 처리 부분
+            List<ProductComment> replies = comment.getRepliesComments(top.getProComCode(), code); // 하위 댓글들
+            List<ProductCommentDTO> repliesDTO = new ArrayList<>();
+
+            for(ProductComment reply : replies){
+                ProductCommentDTO dto = ProductCommentDTO.builder()
+                        .prodCode(reply.getProdCode())
+                        .proComCode(reply.getProComCode())
+                        .proComDesc(reply.getProComDesc())
+                        .proComDate(reply.getProComDate())
+                        .user(UserDTO.builder()
+                                .id(reply.getUser().getId())
+                                .name(reply.getUser().getName())
+                                .build())
+                        .build();
+                repliesDTO.add(dto);
+            }
+
+            // 상위 댓글 처리 부분
+            ProductCommentDTO dto = ProductCommentDTO.builder()
+                    .prodCode(top.getProdCode())
+                    .proComCode(top.getProComCode())
+                    .proComDesc(top.getProComDesc())
+                    .proComDate(top.getProComDate())
+                    .user(UserDTO.builder()
+                            .id(top.getUser().getId())
+                            .name(top.getUser().getName())
+                            .build())
+                    .replies(repliesDTO) // 하위댓글 관련
+                    .build();
+            response.add(dto);
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
 }
