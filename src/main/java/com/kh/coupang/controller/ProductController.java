@@ -255,14 +255,16 @@ public class ProductController {
     @GetMapping("/public/product/{code}/comment")
     public ResponseEntity<List<ProductCommentDTO>> viewComment(@PathVariable(name="code") int code){
         List<ProductComment> topList = comment.getTopLevelComments(code);
-        List<ProductCommentDTO> response = new ArrayList<>();
+        List<ProductCommentDTO> response = commentDetailtList(topList, code);
+                /*new ArrayList<>();
 
-        for(ProductComment top : topList){
+      //  for(ProductComment top : topList){
             // 하위 댓글 처리 부분
             List<ProductComment> replies = comment.getRepliesComments(top.getProComCode(), code); // 하위 댓글들
-            List<ProductCommentDTO> repliesDTO = new ArrayList<>();
+           // List<ProductCommentDTO> repliesDTO = new ArrayList<>();
 
-            for(ProductComment reply : replies){
+           // for(ProductComment reply : replies){
+                /*
                 ProductCommentDTO dto = ProductCommentDTO.builder()
                         .prodCode(reply.getProdCode())
                         .proComCode(reply.getProComCode())
@@ -273,10 +275,13 @@ public class ProductController {
                                 .name(reply.getUser().getName())
                                 .build())
                         .build();
+
+              //  ProductCommentDTO dto = comment(reply);
                 repliesDTO.add(dto);
-            }
+           // }
 
             // 상위 댓글 처리 부분
+            /*
             ProductCommentDTO dto = ProductCommentDTO.builder()
                     .prodCode(top.getProdCode())
                     .proComCode(top.getProComCode())
@@ -288,10 +293,40 @@ public class ProductController {
                             .build())
                     .replies(repliesDTO) // 하위댓글 관련
                     .build();
+
+          //  ProductCommentDTO dto = comment(top);
+            dto.setReplies(repliesDTO);
             response.add(dto);
         }
-
+*/
         return ResponseEntity.ok(response);
     }
 
+    // 나머지 공통 빼기
+    public List<ProductCommentDTO> commentDetailtList(List<ProductComment> comments, int code){
+        List<ProductCommentDTO> response = new ArrayList<>();
+
+        for(ProductComment item : comments){
+            List<ProductComment> replies = comment.getRepliesComments(item.getProComCode(), code);
+            List<ProductCommentDTO> repliesDTO = commentDetailtList(replies, code);
+            ProductCommentDTO dto = commentDetail(item);
+            dto.setReplies(repliesDTO);
+            response.add(dto);
+        }
+        return response;
+    }
+
+    // 공통 부분 빼기 : .builder().build()
+    public ProductCommentDTO commentDetail(ProductComment vo){
+        return ProductCommentDTO.builder()
+                .prodCode(vo.getProdCode())
+                .proComCode(vo.getProComCode())
+                .proComDesc(vo.getProComDesc())
+                .proComDate(vo.getProComDate())
+                .user(UserDTO.builder()
+                        .id(vo.getUser().getId())
+                        .name(vo.getUser().getName())
+                        .build())
+                .build();
+    }
 }
