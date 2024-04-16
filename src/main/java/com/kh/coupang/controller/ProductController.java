@@ -262,7 +262,7 @@ public class ProductController {
         SecurityContext securityContext = SecurityContextHolder.getContext();
         Authentication authentication = securityContext.getAuthentication();
         Object principal = authentication.getPrincipal();
-
+        log.info("principal : " + principal);
         if(principal instanceof User){
             User user = (User) principal;
             vo.setUser(user);
