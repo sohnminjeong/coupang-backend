@@ -1,11 +1,13 @@
 package com.kh.coupang.controller;
 
 import com.kh.coupang.domain.*;
+import com.kh.coupang.service.CategoryService;
 import com.kh.coupang.service.ProductCommentService;
 import com.kh.coupang.service.ProductService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -32,6 +34,7 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequestMapping("/api/*")
+@CrossOrigin(origins = {"*"}, maxAge = 6000)
 public class ProductController {
 
     // 메서드명은 Service랑 동일!
@@ -41,9 +44,33 @@ public class ProductController {
     @Autowired
     private ProductCommentService comment;
 
+    @Autowired
+    private CategoryService category;
+
 
     @Value("${spring.servlet.multipart.location}")
     private String uploadPath;  // D:\\upload
+
+    // 카테고리 가져오기
+    @GetMapping("/public/category")
+    public ResponseEntity<List<CategoryDTO>> categoryView(){
+        List<Category> topList = category.topCategory();
+        List<CategoryDTO> response = new ArrayList<>();
+
+        for(Category item : topList){
+            CategoryDTO dto = CategoryDTO.builder()
+                    .cateIcon(item.getCateIcon())
+                    .cateName(item.getCateName())
+                    .cateCode(item.getCateCode())
+                    .cateUrl(item.getCateUrl())
+                    .subCategories(category.bottomCategory(item.getCateCode()))
+                    .build();
+            response.add(dto);
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
 
     // jpa 방식
     /*
@@ -61,7 +88,7 @@ public class ProductController {
     }
     */
     // querydsl 방식
-    @GetMapping("/product")
+    @GetMapping("/public/product")
     public ResponseEntity<List<Product>> viewAll(@RequestParam(name="category", required = false) Integer category, @RequestParam(name="page", defaultValue = "1") int page) {
         //log.info("category: " + category);
         //log.info("page : " + page);
