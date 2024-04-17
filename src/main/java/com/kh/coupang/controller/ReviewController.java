@@ -33,6 +33,7 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequestMapping("/api/*")
+@CrossOrigin(origins = {"*"}, maxAge = 6000)
 public class ReviewController {
 
     @Autowired
@@ -101,8 +102,14 @@ public class ReviewController {
     }
     */
     // querydsl 방식 : prodCode에 따라 내림차순&1페이지에 10개씩 페이징 처리
-    @GetMapping("/review")
-    public ResponseEntity<List<Review>> viewAll(@RequestParam(name="prodCode", required = false) Integer prodCode, @RequestParam(name="page", defaultValue = "1") int page){
+
+    // 상품 전체 보기를 상품 1개에 있는 리뷰 전체 보기로 코드 변경함
+    // 상품 1개에 있는 리뷰 전체 보기
+    // http://localhost:8080/api/public/product/2/review
+    // /public/product/{code}/review
+    @GetMapping("/public/product/{code}/review")
+    public ResponseEntity<List<Review>> viewAll(@RequestParam(name="page", defaultValue = "1") int page, @PathVariable(name="code")int code){
+        // @RequestParam(name="prodCode", required = false) Integer prodCode,
         // 정렬하고 싶으면 sort 사용
         Sort sort = Sort.by("reviCode").descending();  // 거꾸로 정렬
         Pageable pageable = PageRequest.of(page-1, 10, sort);
@@ -110,15 +117,19 @@ public class ReviewController {
         QReview qReview = QReview.review;
         BooleanBuilder builder = new BooleanBuilder();
 
-        if(prodCode!=null){
-            BooleanExpression expression = qReview.prodCode.eq(prodCode);
+        BooleanExpression expression = qReview.prodCode.eq(code);
+        builder.and(expression);
 
-            builder.and(expression);
-        }
+//        if(prodCode!=null){
+//            BooleanExpression expression = qReview.prodCode.eq(prodCode);
+//
+//            builder.and(expression);
+//        }
 
-        Page<Review> list = service.viewAll(pageable, builder);
+//        Page<Review> list = service.viewAll(pageable, builder);
 
-        return ResponseEntity.status(HttpStatus.OK).body(list.getContent());
+//        return ResponseEntity.status(HttpStatus.OK).body(review.veiwQll);
+        return ResponseEntity.status(HttpStatus.OK).body(service.viewAll(pageable, builder).getContent());
     }
 
     // 리뷰 1개 조회

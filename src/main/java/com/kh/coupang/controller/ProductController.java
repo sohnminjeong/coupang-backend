@@ -248,7 +248,7 @@ public class ProductController {
     }
 
     // 상품 1개 조회
-    @GetMapping("/product/{code}")
+    @GetMapping("public/product/{code}")
     public ResponseEntity<Product> view(@PathVariable("code") int code) {
         Product vo = service.view(code);
         return ResponseEntity.status(HttpStatus.OK).body(vo);
