@@ -1,6 +1,7 @@
 package com.kh.coupang.service;
 
 import com.kh.coupang.domain.Review;
+import com.kh.coupang.domain.ReviewDTO;
 import com.kh.coupang.domain.ReviewImage;
 import com.kh.coupang.repo.ReviewDAO;
 import com.kh.coupang.repo.ReviewImageDAO;
@@ -34,7 +35,25 @@ public class ReviewService {
         return review.findAll(builder, pageable);
     }
 
+    // 리뷰 수정
+    public Review update(Review dto){
+        return review.save(dto);
+    }
+
+    // 리뷰 삭제
+    public void delete(int reviCode) {
+            review.deleteById(reviCode);
+    }
+
+
     // 리뷰 1개 조회
     public Review view(int code) {return review.findById(code).orElse(null);}
+
+    // reviCode로 이미지 테이블에서 찾기
+    public List<ReviewImage> findByCode(int reviCode){return image.findByCode(reviCode);}
+
+    // revi_img_code로 이미지 삭제
+    public void deleteImage(int reviImgCode){image.deleteById(reviImgCode);}
+
 
 }

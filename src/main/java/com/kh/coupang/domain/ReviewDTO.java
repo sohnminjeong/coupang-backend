@@ -12,11 +12,14 @@ import java.util.List;
 @AllArgsConstructor
 public class ReviewDTO {
 
-    private List<MultipartFile> files;
+    private int reviCode;
+
     private String id;
     private int prodCode;
     private String reviTitle;
     private String reviDesc;
     private int rating;
 
+    private List<MultipartFile> files;
+    private List<String> images;
 }
